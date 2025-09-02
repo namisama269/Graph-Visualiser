@@ -38,13 +38,13 @@ class Node {
         c.arc(this.x, this.y, nodeRad / 2, 0, Math.PI * 2, true);
         c.fill();
 
-        // Center the node label
+        // Center label
         c.fillStyle = "white";
         c.font = "20px Arial";
         c.textAlign = "center";
         c.textBaseline = "middle";
         c.fillText(idx, this.x, this.y);
-    };
+    }
 }
 
 canvas.width = canvas.offsetWidth;
@@ -106,13 +106,12 @@ function updateIfValid() {
 
     oldN = n;
     n = data[0][0];
-    let m = data[0].length == 2 ? data[0][1] : -1; // optional number of edges
+    let m = data[0].length == 2 ? data[0][1] : -1;
 
-    // Check edge count if m is provided
     if (m != -1 && lines.length - 1 != m) return false;
 
     for (let i = 1; i < data.length; ++i) {
-        if (data[i].length < 2) return false;  // At least two numbers per edge
+        if (data[i].length < 2) return false;
         let u = data[i][0], v = data[i][1];
         if (!indexed && (u < 0 || v < 0 || u >= n || v >= n)) return false;
         if (indexed && (u <= 0 || v <= 0 || u > n || v > n)) return false;
@@ -121,6 +120,7 @@ function updateIfValid() {
     validData = data;
     return true;
 }
+
 function fillNodes() {
     nodes = [];
     for (let i = 0; i < n; ++i) {
@@ -135,7 +135,7 @@ function fillEdges() {
     for (let i = 1; i < validData.length; ++i) {
         let fromNode = validData[i][0];
         let toNode = validData[i][1];
-        let w = 1; 
+        let w = 1;
         if (weighted && validData[i].length >= 3) w = validData[i][2];
         edges.push([fromNode, toNode, w]);
         if (indexed) {
@@ -148,8 +148,12 @@ function fillEdges() {
 }
 
 function drawAll() {
+    if (n <= 0 || nodes.length !== n) return;
     c.lineWidth = 3;
+
+    // Draw node circles
     for (let i = 0; i < n; ++i) {
+        if (!nodes[i]) continue;
         nodes[i].drawRad();
     }
 
@@ -157,11 +161,13 @@ function drawAll() {
         let fromNode = edge[0];
         let toNode = edge[1];
         let w = edge[2];
+
         if (fromNode == toNode) return;
         if (indexed) {
             --fromNode;
             --toNode;
         }
+        if (!nodes[fromNode] || !nodes[toNode]) return;
 
         let midX = (nodes[fromNode].x + nodes[toNode].x) / 2;
         let midY = (nodes[fromNode].y + nodes[toNode].y) / 2;
@@ -172,37 +178,30 @@ function drawAll() {
             let dist = Math.sqrt(dx*dx + dy*dy);
             let ux = dx / dist;
             let uy = dy / dist;
-
-            // Dynamic radius for weight circle
             c.font = "24px Arial";
             const textWidth = c.measureText(w).width;
             const radius = Math.max(15, textWidth/2 + 5);
-
-            // Compute offset so edge avoids circle
             let offset = radius + 5;
 
-            // Draw two edge segments (before and after circle)
             drawLine(nodes[fromNode].x, nodes[fromNode].y, midX - ux*offset, midY - uy*offset);
             drawLine(midX + ux*offset, midY + uy*offset, nodes[toNode].x, nodes[toNode].y);
 
-            // Draw weight circle
+            // Weight circle
             c.beginPath();
             c.fillStyle = "white";
             c.arc(midX, midY, radius, 0, Math.PI*2);
             c.fill();
-
-            // Draw weight text
             c.fillStyle = "black";
             c.textAlign = "center";
             c.textBaseline = "middle";
             c.fillText(w, midX, midY);
 
-            // Draw arrowhead only on the second segment
             if (directed) {
                 const arrowStartX = midX + ux*offset;
                 const arrowStartY = midY + uy*offset;
                 drawArrow(arrowStartX, arrowStartY, nodes[toNode].x, nodes[toNode].y);
             }
+
         } else {
             if (directed) drawArrow(nodes[fromNode].x, nodes[fromNode].y, nodes[toNode].x, nodes[toNode].y);
             else drawLine(nodes[fromNode].x, nodes[fromNode].y, nodes[toNode].x, nodes[toNode].y);
@@ -210,6 +209,7 @@ function drawAll() {
     });
 
     for (let i = 0; i < n; ++i) {
+        if (!nodes[i]) continue;
         nodes[i].draw(i);
     }
 }
@@ -278,6 +278,7 @@ function bfs(u) {
 
     while (front != q.length) {
         let node = q[front];
+        if (!adj[node]) { front++; continue; }
         adj[node].forEach((neighbour) => {
             if (!vis[neighbour]) {
                 vis[neighbour] = true;
@@ -295,6 +296,8 @@ function idealLength() {
 }
 
 function force() {
+    if (nodes.length !== n) return;
+
     d = [];
     maxDist = 0;
     for (let i = 0; i < n; ++i) {
